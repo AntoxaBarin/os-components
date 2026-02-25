@@ -16,14 +16,14 @@ typedef struct inode inode_t;
 typedef struct {
   char *name;
   inode_t *node;
-} dir_entry_t;
+} dentry_t;
 
 struct inode {
   mode_t mode;
   size_t size;
   char *data;
 
-  dir_entry_t *entries;
+  dentry_t *entries;
   size_t entry_count;
 
   inode_t *parent;
@@ -32,6 +32,7 @@ struct inode {
 static inode_t *root;
 
 static inode_t *inode_create(mode_t mode) {
+  printf("inode_create(mode=%o)\n", mode);
   inode_t *n = calloc(1, sizeof(inode_t));
   n->mode = mode;
   return n;
@@ -39,18 +40,22 @@ static inode_t *inode_create(mode_t mode) {
 
 static inode_t *dir_lookup(inode_t *dir, const char *name) {
   printf("dir_lookup(name=\"%s\")\n", name);
-  if (!S_ISDIR(dir->mode)) return NULL;
+  if (!S_ISDIR(dir->mode)) {
+    return NULL;
+  }
 
-  for (size_t i = 0; i < dir->entry_count; i++)
-    if (!strcmp(dir->entries[i].name, name)) return dir->entries[i].node;
-
+  for (size_t i = 0; i < dir->entry_count; i++) {
+    if (!strcmp(dir->entries[i].name, name)) {
+      return dir->entries[i].node;
+    }
+  }
   return NULL;
 }
 
 static void dir_add(inode_t *dir, const char *name, inode_t *child) {
   printf("dir_add(name=\"%s\")\n", name);
   dir->entries =
-      realloc(dir->entries, sizeof(dir_entry_t) * (dir->entry_count + 1));
+      realloc(dir->entries, sizeof(dentry_t) * (dir->entry_count + 1));
 
   dir->entries[dir->entry_count].name = strdup(name);
   dir->entries[dir->entry_count].node = child;
@@ -66,7 +71,7 @@ static int dir_remove(inode_t *dir, const char *name) {
       free(dir->entries[i].name);
 
       memmove(&dir->entries[i], &dir->entries[i + 1],
-              sizeof(dir_entry_t) * (dir->entry_count - i - 1));
+              sizeof(dentry_t) * (dir->entry_count - i - 1));
 
       dir->entry_count--;
 
@@ -75,7 +80,7 @@ static int dir_remove(inode_t *dir, const char *name) {
         dir->entries = NULL;
       } else {
         dir->entries =
-            realloc(dir->entries, sizeof(dir_entry_t) * dir->entry_count);
+            realloc(dir->entries, sizeof(dentry_t) * dir->entry_count);
       }
 
       return 0;
@@ -111,15 +116,18 @@ static inode_t *path_parent(const char *path, char **name) {
 
   *name = strdup(slash + 1);
 
-  if (slash == dup)
+  if (slash == dup) {
     slash[1] = 0;
-  else
+  } else {
     *slash = 0;
+  }
 
   inode_t *p = path_resolve(dup);
   free(dup);
   return p;
 }
+
+/* FS Operations */
 
 static int ffs_getattr(const char *path, struct stat *st,
                        struct fuse_file_info *fi) {
@@ -127,7 +135,9 @@ static int ffs_getattr(const char *path, struct stat *st,
   (void)fi;
 
   inode_t *n = path_resolve(path);
-  if (!n) return -ENOENT;
+  if (!n) {
+    return -ENOENT;
+  }
 
   memset(st, 0, sizeof(struct stat));
 
@@ -149,8 +159,12 @@ static int ffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
   (void)flags;
 
   inode_t *dir = path_resolve(path);
-  if (!dir) return -ENOENT;
-  if (!S_ISDIR(dir->mode)) return -ENOTDIR;
+  if (!dir) {
+    return -ENOENT;
+  }
+  if (!S_ISDIR(dir->mode)) {
+    return -ENOTDIR;
+  }
 
   filler(buf, ".", NULL, 0, 0);
   filler(buf, "..", NULL, 0, 0);
@@ -167,9 +181,15 @@ static int ffs_mkdir(const char *path, mode_t mode) {
   char *name;
   inode_t *parent = path_parent(path, &name);
 
-  if (!parent) return -ENOENT;
-  if (!S_ISDIR(parent->mode)) return -ENOTDIR;
-  if (dir_lookup(parent, name)) return -EEXIST;
+  if (!parent) {
+    return -ENOENT;
+  }
+  if (!S_ISDIR(parent->mode)) {
+    return -ENOTDIR;
+  }
+  if (dir_lookup(parent, name)) {
+    return -EEXIST;
+  }
 
   inode_t *n = inode_create(S_IFDIR | mode);
   dir_add(parent, name, n);
@@ -185,9 +205,15 @@ static int ffs_mknod(const char *path, mode_t mode, dev_t dev) {
   char *name;
   inode_t *parent = path_parent(path, &name);
 
-  if (!parent) return -ENOENT;
-  if (!S_ISDIR(parent->mode)) return -ENOTDIR;
-  if (dir_lookup(parent, name)) return -EEXIST;
+  if (!parent) {
+    return -ENOENT;
+  }
+  if (!S_ISDIR(parent->mode)) {
+    return -ENOTDIR;
+  }
+  if (dir_lookup(parent, name)) {
+    return -EEXIST;
+  }
 
   inode_t *n = inode_create(S_IFREG | mode);
   dir_add(parent, name, n);
@@ -201,7 +227,9 @@ static int ffs_unlink(const char *path) {
   char *name;
   inode_t *parent = path_parent(path, &name);
 
-  if (!parent) return -ENOENT;
+  if (!parent) {
+    return -ENOENT;
+  }
 
   inode_t *n = dir_lookup(parent, name);
   if (!n) {
@@ -229,11 +257,19 @@ static int ffs_read(const char *path, char *buf, size_t size, off_t offset,
   (void)fi;
 
   inode_t *n = path_resolve(path);
-  if (!n) return -ENOENT;
-  if (!S_ISREG(n->mode)) return -EISDIR;
+  if (!n) {
+    return -ENOENT;
+  }
+  if (!S_ISREG(n->mode)) {
+    return -EISDIR;
+  }
 
-  if (offset >= n->size) return 0;
-  if (offset + size > n->size) size = n->size - offset;
+  if (offset >= n->size) {
+    return 0;
+  }
+  if (offset + size > n->size) {
+    size = n->size - offset;
+  }
 
   memcpy(buf, n->data + offset, size);
   return size;
@@ -245,8 +281,12 @@ static int ffs_write(const char *path, const char *buf, size_t size,
   (void)fi;
 
   inode_t *n = path_resolve(path);
-  if (!n) return -ENOENT;
-  if (!S_ISREG(n->mode)) return -EISDIR;
+  if (!n) {
+    return -ENOENT;
+  }
+  if (!S_ISREG(n->mode)) {
+    return -EISDIR;
+  }
 
   size_t newsize = offset + size;
 
