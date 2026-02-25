@@ -1,13 +1,25 @@
 CC = gcc
-C_FLAGS = -Wall -D_FILE_OFFSET_BITS=64
-LD_FLAGS = `pkg-config fuse3 --libs`
-SRC = src/ffs.c
-EXE = ffs
+CFLAGS = -Iinclude -Wall -Werror -g
+LDFLAGS = `pkg-config fuse3 --libs`
+PKG_CFLAGS = `pkg-config fuse3 --cflags`
 
-all:
-	$(CC) $(C_FLAGS) $(SRC) -o $(EXE) $(LD_FLAGS)
+OBJ_DIR = obj
+SRCS = src/ffs.c
+OBJS = $(addprefix $(OBJ_DIR)/, $(notdir $(SRCS:.c=.o)))
+TARGET = ffs
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $^ -o $@ $(LDFLAGS)
+
+$(OBJ_DIR)/%.o: src/%.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) $(PKG_CFLAGS) -c $< -o $@
+
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
 
 clean:
-	rm $(EXE)
+	rm -rf $(OBJ_DIR) $(TARGET)
 
 .PHONY: all clean

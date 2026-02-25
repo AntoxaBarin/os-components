@@ -38,7 +38,7 @@ static inode_t *inode_create(mode_t mode) {
 }
 
 static inode_t *dir_lookup(inode_t *dir, const char *name) {
-  printf("dir_lookup(dir=%p, name=\"%s\")\n", dir, name);
+  printf("dir_lookup(name=\"%s\")\n", name);
   if (!S_ISDIR(dir->mode)) return NULL;
 
   for (size_t i = 0; i < dir->entry_count; i++)
@@ -48,7 +48,7 @@ static inode_t *dir_lookup(inode_t *dir, const char *name) {
 }
 
 static void dir_add(inode_t *dir, const char *name, inode_t *child) {
-  printf("dir_add(dir=%p, name=\"%s\", child=%p)\n", dir, name, child);
+  printf("dir_add(name=\"%s\")\n", name);
   dir->entries =
       realloc(dir->entries, sizeof(dir_entry_t) * (dir->entry_count + 1));
 
@@ -60,7 +60,7 @@ static void dir_add(inode_t *dir, const char *name, inode_t *child) {
 }
 
 static int dir_remove(inode_t *dir, const char *name) {
-  printf("dir_remove(dir=%p, name=\"%s\")\n", dir, name);
+  printf("dir_remove(name=\"%s\")\n", name);
   for (size_t i = 0; i < dir->entry_count; i++) {
     if (!strcmp(dir->entries[i].name, name)) {
       free(dir->entries[i].name);
@@ -123,7 +123,7 @@ static inode_t *path_parent(const char *path, char **name) {
 
 static int ffs_getattr(const char *path, struct stat *st,
                        struct fuse_file_info *fi) {
-  printf("ffs_getattr(path=\"%s\", st=%p, fi=%p)\n", path, st, fi);
+  printf("ffs_getattr(path=\"%s\")\n", path);
   (void)fi;
 
   inode_t *n = path_resolve(path);
@@ -143,10 +143,7 @@ static int ffs_getattr(const char *path, struct stat *st,
 static int ffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t off, struct fuse_file_info *fi,
                        enum fuse_readdir_flags flags) {
-  printf(
-      "ffs_readdir(path=\"%s\", buf=%p, filler=%p, off=%ld, fi=%p, "
-      "flags=%d)\n",
-      path, buf, filler, off, fi, flags);
+  printf("ffs_readdir(path=\"%s\")\n", path);
   (void)off;
   (void)fi;
   (void)flags;
@@ -228,8 +225,7 @@ static int ffs_unlink(const char *path) {
 
 static int ffs_read(const char *path, char *buf, size_t size, off_t offset,
                     struct fuse_file_info *fi) {
-  printf("ffs_read(path=\"%s\", buf=%p, size=%zu, offset=%ld, fi=%p)\n", path,
-         buf, size, offset, fi);
+  printf("ffs_read(path=\"%s\", size=%zu)\n", path, size);
   (void)fi;
 
   inode_t *n = path_resolve(path);
@@ -245,8 +241,7 @@ static int ffs_read(const char *path, char *buf, size_t size, off_t offset,
 
 static int ffs_write(const char *path, const char *buf, size_t size,
                      off_t offset, struct fuse_file_info *fi) {
-  printf("ffs_write(path=\"%s\", buf=%p, size=%zu, offset=%ld, fi=%p)\n", path,
-         buf, size, offset, fi);
+  printf("ffs_write(path=\"%s\", size=%zu)\n", path, size);
   (void)fi;
 
   inode_t *n = path_resolve(path);
