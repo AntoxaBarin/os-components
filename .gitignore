@@ -2,5 +2,8 @@ ffs
 obj
 
 *.ko
-*.mod
+*.mod*
 *.cmd
+*.o
+*.symvers
+*.order
