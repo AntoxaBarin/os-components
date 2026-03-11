@@ -1,2 +1,6 @@
 ffs
 obj
+
+*.ko
+*.mod
+*.cmd
