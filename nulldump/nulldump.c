@@ -57,7 +57,7 @@ static ssize_t nulldump_write(struct file *file, const char __user *data,
 
 static char *nulldump_devnode(const struct device *dev, umode_t *mode) {
   if (mode) {
-    *mode = S_IRUGO | S_IWUGO; // rw-rw-rw-
+    *mode = (char*)(S_IRUGO | S_IWUGO); // rw-rw-rw-
   }
   return NULL;
 }
