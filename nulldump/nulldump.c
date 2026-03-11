@@ -57,7 +57,7 @@ static ssize_t nulldump_write(struct file *file, const char __user *data,
 
 static char *nulldump_devnode(const struct device *dev, umode_t *mode) {
   *mode = S_IRUGO | S_IWUGO; // rw-rw-rw-
-  return 0;
+  return NULL;
 }
 
 static struct file_operations nulldump_fops = {
