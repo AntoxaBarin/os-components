@@ -36,7 +36,10 @@ static ssize_t nulldump_write(struct file *file, const char __user *data,
 
   while (offset < size) {
     size_t chunk = size - offset;
-    size_t bytes_this_line = (chunk < LINE_SIZE) ? chunk : LINE_SIZE;
+    size_t bytes_this_line = LINE_SIZE;
+    if (chunk < LINE_SIZE) {
+      bytes_this_line = chunk;
+    }
     unsigned long uncopied;
 
     uncopied = copy_from_user(buf, data + offset, bytes_this_line);
@@ -46,11 +49,15 @@ static ssize_t nulldump_write(struct file *file, const char __user *data,
 
     print_hex_dump(KERN_INFO, "nulldump: ", DUMP_PREFIX_OFFSET, LINE_SIZE, 1,
                    buf, bytes_this_line, true);
-
     offset += bytes_this_line;
   }
 
   return size;
+}
+
+static char *nulldump_devnode(const struct device *dev, umode_t *mode) {
+  *mode = S_IRUGO | S_IWUGO; // rw-rw-rw-
+  return 0;
 }
 
 static struct file_operations nulldump_fops = {
@@ -76,6 +83,7 @@ static int __init nulldump_start(void) {
     goto class_err;
   }
 
+  nulldump_class->devnode = nulldump_devnode;
   nulldump_device = device_create(nulldump_class, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
   if (IS_ERR(nulldump_device)) {
     ret = PTR_ERR(nulldump_device);
