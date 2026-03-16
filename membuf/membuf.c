@@ -13,8 +13,7 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Ivan Shanygin");
-MODULE_DESCRIPTION(
-    "Kernel module creating character devices with static sized buffers");
+MODULE_DESCRIPTION("Kernel module creating character devices with static sized buffers");
 MODULE_VERSION("0.1");
 
 #define MAX_DEVICES 8
@@ -22,16 +21,18 @@ MODULE_VERSION("0.1");
 static int num_devices = 1;
 static int default_buf_size = 4096;
 
-static struct class *membuf_class = NULL;
-static dev_t membuf_dev_num;
-static struct membuf_dev {
+struct membuf_dev {
   struct cdev cdev;
   char *buffer;
   size_t size;
   struct rw_semaphore lock;
   atomic_t open_count;
   bool dying;
-} *membuf_devices[MAX_DEVICES];
+};
+
+static struct class *membuf_class = NULL;
+static dev_t membuf_dev_num;
+static struct membuf_dev *membuf_devices[MAX_DEVICES];
 static int dev_count;
 static DEFINE_MUTEX(list_lock);
 
@@ -41,26 +42,34 @@ static void destroy_membuf_device(int minor);
 static int set_num_devices(const char *val, const struct kernel_param *kp) {
   int new_count;
   int ret = kstrtoint(val, 0, &new_count);
-  if (ret)
+  if (ret) {
     return ret;
-  if (new_count < 0 || new_count > MAX_DEVICES)
+  }
+  if (new_count < 0 || new_count > MAX_DEVICES) {
+    pr_warn("membuf: attempted to set invalid device count %d (max %d)\n",
+            new_count, MAX_DEVICES);
     return -EINVAL;
+  }
 
   mutex_lock(&list_lock);
   if (new_count == dev_count) {
     mutex_unlock(&list_lock);
+    pr_info("membuf: number of devices is already %d\n", new_count);
     return 0;
   }
 
   if (new_count > dev_count) {
     for (int i = dev_count; i < new_count; i++) {
       ret = create_membuf_device(i);
-      if (ret < 0)
+      if (ret < 0) {
+        pr_err("membuf: failed to create device %d: %d\n", i, ret);
         goto expand_fail;
+      }
     }
     dev_count = new_count;
     *(int *)kp->arg = new_count;
     mutex_unlock(&list_lock);
+    pr_info("membuf: successfully expanded to %d devices\n", new_count);
     return 0;
 
   expand_fail:
@@ -100,28 +109,32 @@ MODULE_PARM_DESC(num_devices, "number of membuf devices");
 module_param(default_buf_size, int, 0644);
 MODULE_PARM_DESC(default_buf_size, "default buffer size");
 
-static ssize_t size_show(struct device *dev, struct device_attribute *attr,
-                         char *buf) {
+static ssize_t get_size(struct device *dev, struct device_attribute *attr,
+                        char *buf) {
   struct membuf_dev *mdev = dev_get_drvdata(dev);
-  if (down_read_interruptible(&mdev->lock))
+  if (down_read_interruptible(&mdev->lock)) {
     return -ERESTARTSYS;
+  }
+
   ssize_t ret = sprintf(buf, "%zu\n", mdev->size);
   up_read(&mdev->lock);
   return ret;
 }
 
-static ssize_t size_store(struct device *dev, struct device_attribute *attr,
-                          const char *buf, size_t count) {
+static ssize_t set_size(struct device *dev, struct device_attribute *attr,
+                        const char *buf, size_t count) {
   struct membuf_dev *mdev = dev_get_drvdata(dev);
   unsigned long new_size;
   int ret = kstrtoul(buf, 0, &new_size);
-  if (ret)
+  if (ret) {
     return ret;
-  if (new_size == 0)
+  }
+  if (new_size == 0) {
     return -EINVAL;
-
-  if (down_write_killable(&mdev->lock))
+  }
+  if (down_write_killable(&mdev->lock)) {
     return -ERESTARTSYS;
+  }
 
   if (atomic_read(&mdev->open_count) > 0) {
     up_write(&mdev->lock);
@@ -144,7 +157,7 @@ static ssize_t size_store(struct device *dev, struct device_attribute *attr,
   return count;
 }
 
-static DEVICE_ATTR(size, 0644, size_show, size_store);
+static DEVICE_ATTR(size, 0644, get_size, set_size);
 
 static int membuf_open(struct inode *inode, struct file *file) {
   struct membuf_dev *dev = container_of(inode->i_cdev, struct membuf_dev, cdev);
