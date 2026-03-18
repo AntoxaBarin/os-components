@@ -27,7 +27,7 @@ struct membuf_dev {
   size_t size;
   struct rw_semaphore lock;
   atomic_t open_count;
-  bool dying;
+  bool shutdown;
 };
 
 static struct class *membuf_class = NULL;
@@ -88,7 +88,7 @@ static int set_num_devices(const char *val, const struct kernel_param *kp) {
   }
   for (int i = new_count; i < dev_count; i++) {
     if (membuf_devices[i])
-      membuf_devices[i]->dying = true;
+      membuf_devices[i]->shutdown = true;
   }
   for (int i = new_count; i < dev_count; i++)
     destroy_membuf_device(i);
@@ -162,7 +162,7 @@ static DEVICE_ATTR(size, 0644, get_size, set_size);
 static int membuf_open(struct inode *inode, struct file *file) {
   struct membuf_dev *dev = container_of(inode->i_cdev, struct membuf_dev, cdev);
   mutex_lock(&list_lock);
-  if (dev->dying) {
+  if (dev->shutdown) {
     mutex_unlock(&list_lock);
     return -ENXIO;
   }
@@ -183,8 +183,9 @@ static ssize_t membuf_read(struct file *file, char __user *buf, size_t count,
   struct membuf_dev *dev = file->private_data;
   ssize_t ret;
 
-  if (down_read_interruptible(&dev->lock))
+  if (down_read_interruptible(&dev->lock)) {
     return -ERESTARTSYS;
+  }
 
   if (*ppos >= dev->size) {
     up_read(&dev->lock);
@@ -207,8 +208,9 @@ static ssize_t membuf_write(struct file *file, const char __user *buf,
                             size_t count, loff_t *ppos) {
   struct membuf_dev *dev = file->private_data;
 
-  if (down_write_killable(&dev->lock))
+  if (down_write_killable(&dev->lock)) {
     return -ERESTARTSYS;
+  }
 
   if (*ppos >= dev->size) {
     up_write(&dev->lock);
@@ -235,16 +237,20 @@ static const struct file_operations membuf_fops = {
 };
 
 static int __init membuf_init(void) {
-  int ret, i;
+  int ret;
+  int cur_dev_num = 0;
 
-  if (num_devices <= 0 || num_devices > MAX_DEVICES)
+  if (num_devices <= 0 || num_devices > MAX_DEVICES) {
     return -EINVAL;
-  if (default_buf_size <= 0)
+  }
+  if (default_buf_size <= 0) {
     return -EINVAL;
+  }
 
   ret = alloc_chrdev_region(&membuf_dev_num, 0, MAX_DEVICES, "membuf");
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
 
   membuf_class = class_create("membuf");
   if (IS_ERR(membuf_class)) {
@@ -252,18 +258,20 @@ static int __init membuf_init(void) {
     goto err_unregister_region;
   }
 
-  for (i = 0; i < num_devices; i++) {
-    ret = create_membuf_device(i);
-    if (ret < 0)
+  for (cur_dev_num = 0; cur_dev_num < num_devices; cur_dev_num++) {
+    ret = create_membuf_device(cur_dev_num);
+    if (ret < 0) {
       goto err_remove_cdevs;
+    }
   }
 
   dev_count = num_devices;
   return 0;
 
 err_remove_cdevs:
-  while (i--)
-    destroy_membuf_device(i);
+  while (cur_dev_num--) {
+    destroy_membuf_device(cur_dev_num);
+  }
   class_destroy(membuf_class);
 err_unregister_region:
   unregister_chrdev_region(membuf_dev_num, MAX_DEVICES);
@@ -280,8 +288,9 @@ static void __exit membuf_exit(void) {
 static int create_membuf_device(int minor) {
   dev_t devt = MKDEV(MAJOR(membuf_dev_num), minor);
   struct membuf_dev *dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-  if (!dev)
+  if (!dev) {
     return -ENOMEM;
+  }
 
   dev->buffer = kzalloc(default_buf_size, GFP_KERNEL);
   if (!dev->buffer) {
@@ -291,7 +300,7 @@ static int create_membuf_device(int minor) {
   dev->size = default_buf_size;
   init_rwsem(&dev->lock);
   atomic_set(&dev->open_count, 0);
-  dev->dying = false;
+  dev->shutdown = false;
 
   cdev_init(&dev->cdev, &membuf_fops);
   dev->cdev.owner = THIS_MODULE;
@@ -326,8 +335,9 @@ err_free_buffer:
 
 static void destroy_membuf_device(int minor) {
   struct membuf_dev *dev = membuf_devices[minor];
-  if (!dev)
+  if (!dev) {
     return;
+  }
 
   dev_t devt = MKDEV(MAJOR(membuf_dev_num), minor);
   device_destroy(membuf_class, devt);
