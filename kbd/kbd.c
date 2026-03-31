@@ -62,35 +62,33 @@ static void get_key_name(unsigned int scancode, char *buf) {
       switch (scancode) {
       case 0x0F:
         snprintf(buf, KEYBUF_SIZE, "TAB");
-        return;
+        goto termination;
       case 0x53:
         snprintf(buf, KEYBUF_SIZE, "DELETE");
-        return;
+        goto termination;
       case 0x47:
         snprintf(buf, KEYBUF_SIZE, "HOME");
-        return;
+        goto termination;
       case 0x4F:
         snprintf(buf, KEYBUF_SIZE, "END");
-        return;
+        goto termination;
       case 0x4B:
         snprintf(buf, KEYBUF_SIZE, "LEFT");
-        return;
+        goto termination;
       case 0x48:
         snprintf(buf, KEYBUF_SIZE, "UP");
-        return;
+        goto termination;
       case 0x50:
         snprintf(buf, KEYBUF_SIZE, "DOWN");
-        return;
+        goto termination;
       case 0x4D:
         snprintf(buf, KEYBUF_SIZE, "RIGHT");
-        return;
+        goto termination;
       }
-
       snprintf(buf, KEYBUF_SIZE, "0x%02x", scancode);
     }
-    return;
   }
-
+termination:
   *(buf + 1) = 0;
 }
 
