@@ -86,6 +86,7 @@ static void get_key_name(unsigned int scancode, char *buf) {
         return;
       }
       snprintf(buf, KEYBUF_SIZE, "0x%02x", scancode);
+      return;
     }
   }
   *(buf + 1) = 0;
