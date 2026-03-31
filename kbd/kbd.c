@@ -54,40 +54,40 @@ static void get_key_name(unsigned int scancode, char *buf) {
   } else if (scancode >= 0x2c && scancode <= 0x32) {
     *buf = *(row4 + scancode - 0x2c);
   } else {
-    if (scancode == 0x39) {
+    switch (scancode) {
+    case 0x39:
       snprintf(buf, KEYBUF_SIZE, "SPACE");
-    } else if (scancode == 0x1c) {
+      return;
+    case 0x1C:
       snprintf(buf, KEYBUF_SIZE, "ENTER");
-    } else {
-      switch (scancode) {
-      case 0x0F:
-        snprintf(buf, KEYBUF_SIZE, "TAB");
-        return;
-      case 0x53:
-        snprintf(buf, KEYBUF_SIZE, "DELETE");
-        return;
-      case 0x47:
-        snprintf(buf, KEYBUF_SIZE, "HOME");
-        return;
-      case 0x4F:
-        snprintf(buf, KEYBUF_SIZE, "END");
-        return;
-      case 0x4B:
-        snprintf(buf, KEYBUF_SIZE, "LEFT");
-        return;
-      case 0x48:
-        snprintf(buf, KEYBUF_SIZE, "UP");
-        return;
-      case 0x50:
-        snprintf(buf, KEYBUF_SIZE, "DOWN");
-        return;
-      case 0x4D:
-        snprintf(buf, KEYBUF_SIZE, "RIGHT");
-        return;
-      }
-      snprintf(buf, KEYBUF_SIZE, "0x%02x", scancode);
+      return;
+    case 0x0F:
+      snprintf(buf, KEYBUF_SIZE, "TAB");
+      return;
+    case 0x53:
+      snprintf(buf, KEYBUF_SIZE, "DELETE");
+      return;
+    case 0x47:
+      snprintf(buf, KEYBUF_SIZE, "HOME");
+      return;
+    case 0x4F:
+      snprintf(buf, KEYBUF_SIZE, "END");
+      return;
+    case 0x4B:
+      snprintf(buf, KEYBUF_SIZE, "LEFT");
+      return;
+    case 0x48:
+      snprintf(buf, KEYBUF_SIZE, "UP");
+      return;
+    case 0x50:
+      snprintf(buf, KEYBUF_SIZE, "DOWN");
+      return;
+    case 0x4D:
+      snprintf(buf, KEYBUF_SIZE, "RIGHT");
       return;
     }
+    snprintf(buf, KEYBUF_SIZE, "0x%02x", scancode);
+    return;
   }
   *(buf + 1) = 0;
 }
