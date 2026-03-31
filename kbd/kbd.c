@@ -59,6 +59,33 @@ static void get_key_name(unsigned int scancode, char *buf) {
     } else if (scancode == 0x1c) {
       snprintf(buf, KEYBUF_SIZE, "ENTER");
     } else {
+      switch (scancode) {
+      case 0x0F:
+        snprintf(buf, KEYBUF_SIZE, "TAB");
+        return;
+      case 0x53:
+        snprintf(buf, KEYBUF_SIZE, "DELETE");
+        return;
+      case 0x47:
+        snprintf(buf, KEYBUF_SIZE, "HOME");
+        return;
+      case 0x4F:
+        snprintf(buf, KEYBUF_SIZE, "END");
+        return;
+      case 0x4B:
+        snprintf(buf, KEYBUF_SIZE, "LEFT");
+        return;
+      case 0x48:
+        snprintf(buf, KEYBUF_SIZE, "UP");
+        return;
+      case 0x50:
+        snprintf(buf, KEYBUF_SIZE, "DOWN");
+        return;
+      case 0x4D:
+        snprintf(buf, KEYBUF_SIZE, "RIGHT");
+        return;
+      }
+
       snprintf(buf, KEYBUF_SIZE, "0x%02x", scancode);
     }
     return;
