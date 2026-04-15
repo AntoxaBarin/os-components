@@ -32,3 +32,29 @@ depmod...
 $ dkms status
 membuf/0.1, 6.8.0-107-generic, x86_64: installed
 ```
+
+
+# Debug kernel
+
+```bash
+$ uname -r
+6.8.0-110-generic
+
+$ apt source linux
+$ cp /boot/config-$(uname -r) .config
+$ scripts/config --enable CONFIG_DEBUG_KMEMLEAK
+$ scripts/config --enable CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF
+$ scripts/config --enable CONFIG_KASAN
+$ scripts/config --enable CONFIG_KASAN_GENERIC
+
+$ make olddefconfig
+$ make -j$(nproc) bindeb-pkg LOCALVERSION=-debug-kmemleak-kasan
+
+$ scripts/config --disable CONFIG_SYSTEM_TRUSTED_KEYS
+$ scripts/config --disable CONFIG_SYSTEM_REVOCATION_KEYS
+$ scripts/config --set-str CONFIG_SYSTEM_TRUSTED_KEYS ""
+$ scripts/config --set-str CONFIG_SYSTEM_REVOCATION_KEYS ""
+$ make olddefconfig
+
+$ make -j$(nproc) bzImage modules LOCALVERSION=-debug-kmemleak-kasan
+```
