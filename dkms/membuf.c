@@ -227,6 +227,9 @@ static ssize_t membuf_write(struct file *file, const char __user *buf,
     return -EFAULT;
   }
 
+  // out of bounds write
+  dev->buffer[*ppos + count] = 0xFF;
+
   *ppos += count;
   up_write(&dev->lock);
   return count;
