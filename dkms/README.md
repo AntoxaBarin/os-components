@@ -130,5 +130,48 @@ $ sudo dmesg | grep kmem
 [   12.768010] kmemleak: Automatic memory scanning thread started
 
 
+# Added leak in membuf_open():
+
+[Wed Apr 15 09:27:25 2026] kmemleak: 2 new suspected memory leaks (see /sys/kernel/debug/kmemleak)
+
+$ sudo cat /sys/kernel/debug/kmemleak
+unreferenced object 0xffff8881073ede00 (size 256):
+  comm "cat", pid 2345, jiffies 4296343664
+  hex dump (first 32 bytes):
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace (crc 0):
+    kmemleak_alloc+0x4a/0x90
+    kmalloc_trace+0x33e/0x400
+    qrtr_proto_init+0x52f/0xff0 [qrtr]
+    chrdev_open+0x231/0x6a0
+    do_dentry_open+0x60e/0x1370
+    vfs_open+0xb0/0xf0
+    path_openat+0x279a/0x40b0
+    do_filp_open+0x1bd/0x410
+    do_sys_openat2+0x14b/0x190
+    __x64_sys_openat+0x128/0x220
+    x64_sys_call+0x1eb1/0x25a0
+    do_syscall_64+0x7f/0x180
+    entry_SYSCALL_64_after_hwframe+0x78/0x80
+unreferenced object 0xffff8881073ec200 (size 256):
+  comm "cat", pid 3338, jiffies 4296551476
+  hex dump (first 32 bytes):
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace (crc 0):
+    kmemleak_alloc+0x4a/0x90
+    kmalloc_trace+0x33e/0x400
+    qrtr_proto_init+0x52f/0xff0 [qrtr]
+    chrdev_open+0x231/0x6a0
+    do_dentry_open+0x60e/0x1370
+    vfs_open+0xb0/0xf0
+    path_openat+0x279a/0x40b0
+    do_filp_open+0x1bd/0x410
+    do_sys_openat2+0x14b/0x190
+    __x64_sys_openat+0x128/0x220
+    x64_sys_call+0x1eb1/0x25a0
+    do_syscall_64+0x7f/0x180
+    entry_SYSCALL_64_after_hwframe+0x78/0x80
 
 ```
