@@ -57,4 +57,34 @@ $ scripts/config --set-str CONFIG_SYSTEM_REVOCATION_KEYS ""
 $ make olddefconfig
 
 $ make -j$(nproc) bzImage modules LOCALVERSION=-debug-kmemleak-kasan
+$ sudo make modules_install
+
+$ sudo make install
+INSTALL /boot
+run-parts: executing /etc/kernel/postinst.d/dkms 6.8.12-debug-kmemleak-kasan /boot/vmlinuz-6.8.12-debug-kmemleak-kasan
+ * dkms: running auto installation service for kernel 6.8.12-debug-kmemleak-kasan
+ * dkms: autoinstall for kernel 6.8.12-debug-kmemleak-kasan                                                                          [ OK ] 
+run-parts: executing /etc/kernel/postinst.d/initramfs-tools 6.8.12-debug-kmemleak-kasan /boot/vmlinuz-6.8.12-debug-kmemleak-kasan
+update-initramfs: Generating /boot/initrd.img-6.8.12-debug-kmemleak-kasan
+run-parts: executing /etc/kernel/postinst.d/unattended-upgrades 6.8.12-debug-kmemleak-kasan /boot/vmlinuz-6.8.12-debug-kmemleak-kasan
+run-parts: executing /etc/kernel/postinst.d/update-notifier 6.8.12-debug-kmemleak-kasan /boot/vmlinuz-6.8.12-debug-kmemleak-kasan
+run-parts: executing /etc/kernel/postinst.d/xx-update-initrd-links 6.8.12-debug-kmemleak-kasan /boot/vmlinuz-6.8.12-debug-kmemleak-kasan
+I: /boot/initrd.img is now a symlink to initrd.img-6.8.12-debug-kmemleak-kasan
+run-parts: executing /etc/kernel/postinst.d/zz-update-grub 6.8.12-debug-kmemleak-kasan /boot/vmlinuz-6.8.12-debug-kmemleak-kasan
+Sourcing file `/etc/default/grub'
+Generating grub configuration file ...
+Found linux image: /boot/vmlinuz-6.8.12-debug-kmemleak-kasan
+Found initrd image: /boot/initrd.img-6.8.12-debug-kmemleak-kasan
+Found linux image: /boot/vmlinuz-6.8.0-110-generic
+Found initrd image: /boot/initrd.img-6.8.0-110-generic
+Warning: os-prober will not be executed to detect other bootable partitions.
+Systems on them will not be added to the GRUB boot configuration.
+Check GRUB_DISABLE_OS_PROBER documentation entry.
+Adding boot menu entry for UEFI Firmware Settings ...
+done
+
+
+$ sudo reboot
+$ uname -r
+6.8.12-debug-kmemleak-kasan
 ```
