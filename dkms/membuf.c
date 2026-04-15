@@ -161,6 +161,10 @@ static DEVICE_ATTR(size, 0644, get_size, set_size);
 
 static int membuf_open(struct inode *inode, struct file *file) {
   struct membuf_dev *dev = container_of(inode->i_cdev, struct membuf_dev, cdev);
+  
+  char *leak = kmalloc(256, GFP_KERNEL);
+  (void)leak;
+
   mutex_lock(&list_lock);
   if (dev->shutdown) {
     mutex_unlock(&list_lock);
