@@ -87,4 +87,48 @@ done
 $ sudo reboot
 $ uname -r
 6.8.12-debug-kmemleak-kasan
+
+$ sudo cp -r . /usr/src/membuf-0.1
+
+$ sudo dkms add -m membuf -v 0.1
+Creating symlink /var/lib/dkms/membuf/0.1/source -> /usr/src/membuf-0.1
+
+$ sudo dkms build -m membuf -v 0.1
+ign command: /usr/bin/kmodsign
+Binary update-secureboot-policy not found, modules won't be signed
+
+Building module:
+Cleaning build area...
+make -j8 KERNELRELEASE=6.8.12-debug-kmemleak-kasan -C /lib/modules/6.8.12-debug-kmemleak-kasan/build M=/var/lib/dkms/membuf/0.1/build modules....
+Cleaning build area...
+
+$ sudo dkms install -m membuf -v 0.1
+
+membuf.ko:
+Running module version sanity check.
+ - Original module
+   - No original module exists within this kernel
+ - Installation
+   - Installing to /lib/modules/6.8.12-debug-kmemleak-kasan/updates/dkms/
+depmod..........
+
+$ sudo dkms status
+membuf/0.1, 6.8.12-debug-kmemleak-kasan, x86_64: installed
+
+$ sudo nano /etc/default/grub
+# GRUB_CMDLINE_LINUX_DEFAULT="kmemleak=on"
+
+$ sudo update-grub
+$ cat /proc/cmdline
+BOOT_IMAGE=/vmlinuz-6.8.12-debug-kmemleak-kasan root=/dev/mapper/ubuntu--vg-ubuntu--lv ro kmemleak=on
+
+$ sudo dmesg | grep kmem
+[    0.000000] Linux version 6.8.12-debug-kmemleak-kasan (ivan@ivan) (gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #9 SMP PREEMPT_DYNAMIC Wed Apr 15 00:52:16 UTC 2026 (Ubuntu 6.8.0-110.110-generic 6.8.12)
+[    0.000000] Command line: BOOT_IMAGE=/vmlinuz-6.8.12-debug-kmemleak-kasan root=/dev/mapper/ubuntu--vg-ubuntu--lv ro kmemleak=on
+[    0.764260] Kernel command line: BOOT_IMAGE=/vmlinuz-6.8.12-debug-kmemleak-kasan root=/dev/mapper/ubuntu--vg-ubuntu--lv ro kmemleak=on
+[   12.767923] kmemleak: Kernel memory leak detector initialized (mem pool available: 13534)
+[   12.768010] kmemleak: Automatic memory scanning thread started
+
+
+
 ```
