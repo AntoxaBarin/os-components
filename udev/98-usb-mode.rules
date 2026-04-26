@@ -1,0 +1,1 @@
+SUBSYSTEM=="block", ENV{ID_VENDOR}=="General", MODE="0660", GROUP="docker"
