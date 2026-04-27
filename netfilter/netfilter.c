@@ -41,8 +41,9 @@ static unsigned int tcp_tracker_hook(void *priv, struct sk_buff *skb,
   }
 
   ip_header = ip_hdr(skb);
-  if (!ip_header || ip_header->protocol != IPPROTO_TCP)
+  if (!ip_header || ip_header->protocol != IPPROTO_TCP) {
     return NF_ACCEPT;
+  }
 
   tcp_header = (struct tcphdr *)((__u32 *)ip_header + ip_header->ihl);
   if (!tcp_header) {
@@ -62,23 +63,89 @@ static unsigned int tcp_tracker_hook(void *priv, struct sk_buff *skb,
     return NF_DROP;
   }
 
-  if (!log_all && !(tcp_header->syn && !tcp_header->ack))
+  if (!log_all && !(tcp_header->syn && !tcp_header->ack)) {
     return NF_ACCEPT;
-
+  }
   pr_info("tcp_tracker: OUT %pI4:%u -> %pI4:%u  flags:%s%s%s%s%s\n",
           &ip_header->saddr, src_port, &ip_header->daddr, dst_port, tcp_header->syn ? "S" : "",
           tcp_header->ack ? "A" : "", tcp_header->fin ? "F" : "", tcp_header->rst ? "R" : "",
           tcp_header->psh ? "P" : "");
-
   return NF_ACCEPT;
 }
+
+static struct kobject *tcp_tracker_kobj;
+
+static ssize_t filter_port_show(struct kobject *kobj,
+                                struct kobj_attribute *attr, char *buf) {
+  return sysfs_emit(buf, "%u\n", filter_port);
+}
+
+static ssize_t filter_port_store(struct kobject *kobj,
+                                 struct kobj_attribute *attr, const char *buf,
+                                 size_t count) {
+  unsigned int val;
+  int ret;
+
+  ret = kstrtouint(buf, 10, &val);
+  if (ret) {
+    return ret;
+  }
+  if (val > 65535) {
+    return -EINVAL;
+  }
+
+  filter_port = (unsigned short)val;
+  if (filter_port == 0) {
+    pr_info("tcp_tracker: blocking disabled\n");
+  }
+  else {
+    pr_info("tcp_tracker: blocking destination port %u\n", filter_port);
+  }
+  return count;
+}
+
+static ssize_t log_all_show(struct kobject *kobj, struct kobj_attribute *attr,
+                            char *buf) {
+  return sysfs_emit(buf, "%d\n", log_all ? 1 : 0);
+}
+
+static ssize_t log_all_store(struct kobject *kobj, struct kobj_attribute *attr,
+                             const char *buf, size_t count) {
+  bool val;
+  int ret;
+
+  ret = kstrtobool(buf, &val);
+  if (ret) {
+    return ret;
+  }
+
+  log_all = val;
+  pr_info("tcp_tracker: log_all = %d\n", log_all);
+  return count;
+}
+
+static struct kobj_attribute filter_port_attr =
+    __ATTR(filter_port, 0644, filter_port_show, filter_port_store);
+static struct kobj_attribute log_all_attr =
+    __ATTR(log_all, 0644, log_all_show, log_all_store);
+
+static struct attribute *tcp_tracker_attrs[] = {
+    &filter_port_attr.attr,
+    &log_all_attr.attr,
+    NULL,
+};
+
+static const struct attribute_group tcp_tracker_attr_group = {
+    .attrs = tcp_tracker_attrs,
+};
 
 static int __init tcp_tracker_init(void) {
   int ret;
 
   tcp_tracker_kobj = kobject_create_and_add("tcp_tracker", kernel_kobj);
-  if (!tcp_tracker_kobj)
+  if (!tcp_tracker_kobj) {
     return -ENOMEM;
+  }
 
   ret = sysfs_create_group(tcp_tracker_kobj, &tcp_tracker_attr_group);
   if (ret) {
@@ -98,8 +165,7 @@ static int __init tcp_tracker_init(void) {
     return ret;
   }
 
-  pr_info("tcp_tracker: loaded (filter_port=%u, log_all=%d)\n", filter_port,
-          log_all);
+  pr_info("tcp_tracker: loaded (filter_port=%u, log_all=%d)\n", filter_port, log_all);
   return 0;
 }
 
