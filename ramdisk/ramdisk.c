@@ -70,13 +70,14 @@ static blk_status_t my_xfer_request(struct my_block_dev *dev,
   rq_for_each_segment(bvec, req, iter) {
     sector_t sector = iter.iter.bi_sector;
     void *kaddr = kmap_local_page(bvec.bv_page);
-    blk_status_t st;
+    blk_status_t result;
 
-    st = my_block_transfer(dev, sector, bvec.bv_len, kaddr + bvec.bv_offset, op);
+    result = my_block_transfer(dev, sector, bvec.bv_len, kaddr + bvec.bv_offset, op);
     kunmap_local(kaddr);
 
-    if (st != BLK_STS_OK)
-      return st;
+    if (result != BLK_STS_OK) {
+      return result;
+    }
   }
 
   return BLK_STS_OK;
@@ -91,7 +92,7 @@ static blk_status_t my_queue_rq(struct blk_mq_hw_ctx *hw_ctx,
   blk_mq_start_request(rq);
 
   if (blk_rq_is_passthrough(rq)) {
-    pr_info_ratelimited("ramdisk: skipping passthrough request\n");
+    pr_info("ramdisk: skip non-fs request\n");
     result = BLK_STS_IOERR;
     blk_mq_end_request(rq, result);
     return BLK_STS_OK;  
