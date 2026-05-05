@@ -95,7 +95,7 @@ static blk_status_t my_queue_rq(struct blk_mq_hw_ctx *hw_ctx,
     pr_info("ramdisk: skip non-fs request\n");
     result = BLK_STS_IOERR;
     blk_mq_end_request(rq, result);
-    return BLK_STS_OK;  
+    return BLK_STS_OK;
   }
 
   pr_info("ramdisk: pos=%llu bytes=%u cur=%u dir=%c\n",
@@ -139,16 +139,12 @@ static int create_block_device(struct my_block_dev *dev) {
     goto err_free_data;
   }
 
-  gd = blk_mq_alloc_disk(&dev->tag_set, dev);
+  gd = blk_mq_alloc_disk(&dev->tag_set, &limits, dev);
   if (IS_ERR(gd)) {
     err = PTR_ERR(gd);
     pr_err("ramdisk: blk_mq_alloc_disk failed: %d\n", err);
     goto err_free_tag_set;
   }
-
-  blk_queue_logical_block_size(gd->queue, limits.logical_block_size);
-  blk_queue_physical_block_size(gd->queue, limits.physical_block_size);
-  blk_queue_max_hw_sectors(gd->queue, limits.max_hw_sectors);
 
   gd->major = MY_BLOCK_MAJOR;
   gd->first_minor = 0;
