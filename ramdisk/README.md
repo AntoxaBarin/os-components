@@ -16,7 +16,7 @@ $ sudo dmesg | tail -5
 
 $ sudo mkdir -p /mnt/ramdisk-test
 $ sudo mkfs.ext4 -F /dev/ramdisk
-mke2fs 1.47.0 (5-Feb-2023)
+mke2fs 1.47.2 (1-Jan-2025)
 Creating filesystem with 32768 4k blocks and 32768 inodes
 
 Allocating group tables: done                            
@@ -30,7 +30,7 @@ $ mount | grep ramdisk
 
 $ df -h /mnt/ramdisk-test
 Filesystem      Size  Used Avail Use% Mounted on
-/dev/ramdisk    104M   24K   95M   1% /mnt/ramdisk-test
+/dev/ramdisk    104M  152K   95M   1% /mnt/ramdisk-test
 
 $ for i in 1 2 3 4 5; do
     sudo dd if=/dev/urandom of=/mnt/ramdisk-test/file_$i.bin \
@@ -39,12 +39,14 @@ done
 
 $ ls -hal /mnt/ramdisk-test/
 total 16M
--rw-r--r-- 1 root root 1.0M Apr 29 11:40 file_1.bin
--rw-r--r-- 1 root root 2.0M Apr 29 11:40 file_2.bin
--rw-r--r-- 1 root root 3.0M Apr 29 11:40 file_3.bin
--rw-r--r-- 1 root root 4.0M Apr 29 11:40 file_4.bin
--rw-r--r-- 1 root root 5.0M Apr 29 11:40 file_5.bin
-drwx------ 2 root root  16K Apr 29 11:40 lost+found
+drwxr-xr-x 3 root root 4.0K May  5 20:06 .
+drwxr-xr-x 3 root root 4.0K May  5 20:05 ..
+-rw-r--r-- 1 root root 1.0M May  5 20:06 file_1.bin
+-rw-r--r-- 1 root root 2.0M May  5 20:06 file_2.bin
+-rw-r--r-- 1 root root 3.0M May  5 20:06 file_3.bin
+-rw-r--r-- 1 root root 4.0M May  5 20:06 file_4.bin
+-rw-r--r-- 1 root root 5.0M May  5 20:06 file_5.bin
+drwx------ 2 root root  16K May  5 20:05 lost+found
 
 $ sudo sha256sum /mnt/ramdisk-test/*.bin | sudo tee /tmp/hashes.before
 $ sync
