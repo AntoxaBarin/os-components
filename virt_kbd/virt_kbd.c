@@ -121,7 +121,7 @@ static int __init virt_kbd_init(void) {
 
 static void __exit virt_kbd_exit(void) {
   pr_info(DRIVER_NAME ": unloading, stopping timer\n");
-  del_timer_sync(&virt_kbd_timer);
+  timer_delete_sync(&virt_kbd_timer);
   input_unregister_device(virt_kbd_dev);
   pr_info(DRIVER_NAME ": unloaded\n");
 }
